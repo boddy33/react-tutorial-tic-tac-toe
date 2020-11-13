@@ -6,6 +6,14 @@ body {
   ol, ul {
     padding-left: 30px;
   }
+
+  .board {
+    padding-bottom: 5px;
+  }
+
+  .history {
+    padding-top: 5px;
+  }
   
   .board-row:after {
     clear: both;
@@ -15,6 +23,42 @@ body {
   
   .status {
     margin-bottom: 10px;
+  }
+
+  li {
+    margin: 5px 0;
+  }
+
+  ol {
+    list-style: none;
+    padding-left: 0%;
+  }
+
+  .history-button {
+    width: 102px;
+    text-align: left;
+    background: #fff;
+    border: 1px solid #999;
+  }
+
+  .history-button:hover {
+    cursor: pointer;
+  }
+
+  .history-sort-button {
+    background: none!important;
+    border: none;
+    padding: 0!important;
+    /*optional*/
+    font-family: arial, sans-serif;
+    /*input has OS specific font-family*/
+    color: #069;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .highlight {
+    background: pink !important;
   }
   
   .square {

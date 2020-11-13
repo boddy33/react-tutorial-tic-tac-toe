@@ -4,11 +4,55 @@ import './index.css';
 
 function Square(props) {
       return (
-        <button className="square" onClick={props.onClick}>
+        <button className={'square' + (props.highlight ? ' highlight' : '')} onClick={props.onClick}>
           {props.value}
         </button>
       );
   }
+
+class History extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { sortAsc: true};
+  }
+
+  handleClick = () => this.setState( {sortAsc: !this.state.sortAsc});
+
+  render () {
+    console.log('History.props.moves', this.props.moves);
+    const props = this.props;
+    if (props.moves.length === 0) {
+      return null;
+    }
+
+    let buttonList = props.moves.map((move, index) => {
+      const desc = (index > 0) ?
+        'Undo Move #' + (index + 1) :
+        'Reset Game';
+
+      let extendedHistory = (index % 2 === 0) ?  ' X at ' : ' O at ';
+        extendedHistory += moveToLocation(move.lastMove);
+
+      return (
+        <li key={index}>
+          <button className='history-button' onClick={() => props.jumpTo(index)}>{desc}</button>
+          {extendedHistory}
+        </li>
+      );
+    });
+
+    if (!this.state.sortAsc) {
+      buttonList = buttonList.reverse();
+    }
+
+    return (
+      <div className="history">
+        <button className="history-sort-button" onClick={this.handleClick}>History (click to sort)</button>
+        <ol>{buttonList}</ol>
+      </div>
+    );
+  }
+}
   
   class Board extends React.Component {
     renderSquare(i) {
@@ -16,13 +60,15 @@ function Square(props) {
         <Square 
           value={this.props.squares[i]}
           onClick={() => this.props.onClick(i)}
+          highlight={this.props.highlightSequence.includes(i)}
         />
       );
     }
   
     render() {
+      console.log('Board.props.highlightSequence', this.props.highlightSequence);
       return (
-        <div>
+        <div className="board">
           <div className="board-row">
             {this.renderSquare(0)}
             {this.renderSquare(1)}
@@ -49,6 +95,7 @@ function Square(props) {
       this.state = {
         history: [{
           squares: Array(9).fill(null),
+          lastMove: null,
         }],
         stepNumber: 0,
         xIsNext: true,
@@ -56,15 +103,21 @@ function Square(props) {
     }
 
     jumpTo(step) {
+      console.log('jumpTo step', step);
+      const history = this.state.history.slice(0, step + 1);
       this.setState({
         stepNumber: step,
         xIsNext: (step % 2) === 0,
+        history
       });
     }
 
     handleClick(i) {
-      const history = this.state.history.slice(0, this.state.stepNumber + 1);
+      console.log('handleClick i', i);
+      
+      const history = this.state.history;
       const current = history[history.length - 1];
+      current.lastMove = i;
       const squares = current.squares.slice();
       if (calculateWinner(squares) || squares[i]) {
         return;
@@ -80,27 +133,43 @@ function Square(props) {
     }
 
     render() {
+      console.log('Game.state.stepNumber', this.state.stepNumber);
+
       const history = this.state.history;
+      console.log('Game.state.history', this.state.history);  
+
       const current = history[this.state.stepNumber];
       const winner = calculateWinner(current.squares);
+      const winnerPlayer = winner ? winner.player : null;
+      const winnerSequence = winner ? winner.sequence : null;
 
-      const moves = history.map((step, move) => {
-        const desc = move ?
-          'Go to move #' + move :
-          'Go to game start';
-        return (
-          <li key={move}>
-            <button onClick={() => this.jumpTo(move)}>{desc}</button>
-          </li>
-        );
-      });
+      const pastMoves = history.slice(0, -1);
 
-      let status;
-      if (winner) {
-        status = <b>Winner: {winner}</b>;
+      let statistics = null;
+      let moveStatus = null;
+      let playerStatus = null;
+      let winnerStatus = null;
+
+      if (winnerPlayer) {
+        moveStatus = 'Last move #' + this.state.stepNumber;
+        winnerStatus = 'Winner: ' + winnerPlayer
+      } else if (this.state.stepNumber === 9) {
+        moveStatus = 'Last move #' + this.state.stepNumber;
+        winnerStatus = "It's a draw!";
       } else {
-        status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+        moveStatus = 'Move #' + this.state.stepNumber;
+        playerStatus = 'Player:' + (this.state.xIsNext ? 'X' : 'O'); 
       }
+
+      statistics = 
+      (
+        <div>
+          <b><i>Game Statistics</i></b><br/><br/>
+          {moveStatus}<br/><br/>
+          {playerStatus}
+          <b>{winnerStatus}</b>
+        </div>
+      );
 
       return (
         <div className="game">
@@ -108,11 +177,13 @@ function Square(props) {
             <Board 
               squares={current.squares}
               onClick={(i) => this.handleClick(i)}
+              highlightSequence={(winnerSequence || [])}
             />
+            <History moves={pastMoves} jumpTo={(step) => this.jumpTo(step)}/>
           </div>
           <div className="game-info">
-            <div>{status}</div>
-            <ol>{moves}</ol>
+            <div>{statistics}</div>
+            
           </div>
         </div>
       );
@@ -127,6 +198,8 @@ function Square(props) {
   );
   
   function calculateWinner(squares) {
+    let winner = null;
+
     const lines = [
       [0, 1, 2],
       [3, 4, 5],
@@ -140,8 +213,27 @@ function Square(props) {
     for (let i = 0; i < lines.length; i++) {
       const [a, b, c] = lines[i];
       if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a];
+        winner = {};
+        winner.player = squares[a];
+        winner.sequence = lines[i];
+        return winner;
       }
     }
-    return null;
+    return winner;
+  }
+
+  
+  function moveToLocation(i) {
+      switch(i) {
+        case 0: return '(1, 1)';
+        case 1: return '(1, 2)';
+        case 2: return '(1, 3)';
+        case 3: return '(2, 1)';
+        case 4: return '(2, 2)';
+        case 5: return '(2, 3)';
+        case 6: return '(3, 1)';
+        case 7: return '(3, 2)';
+        case 8: return '(3, 3)';
+        default: return null;
+      }
   }
